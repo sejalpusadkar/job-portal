@@ -1,5 +1,5 @@
 -- Initial schema for dockerized MySQL (matches the working local schema).
--- MySQL root password is managed by docker-compose.yml (root123).
+-- MySQL root password is managed by your local environment / secrets manager.
 
 CREATE DATABASE IF NOT EXISTS job_portal_db;
 USE job_portal_db;
@@ -168,4 +168,3 @@ CREATE TABLE `password_reset_tokens` (
   `user_id` bigint NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-

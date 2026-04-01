@@ -43,6 +43,12 @@ public class CandidateProfile {
     @Column(nullable = false)
     private int experienceYears = 0;
 
+    @Column(name = "role_title", nullable = false, length = 120)
+    private String roleTitle = "";
+
+    @Column(nullable = false, length = 120)
+    private String location = "";
+
     @Column(name = "professional_summary", nullable = false, length = 2000)
     private String professionalSummary = "";
 

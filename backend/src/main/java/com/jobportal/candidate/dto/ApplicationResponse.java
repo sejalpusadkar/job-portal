@@ -13,8 +13,8 @@ public class ApplicationResponse {
     private Long id;
     private Long jobId;
     private String jobTitle;
+    private String companyName;
     private ApplicationStatus status;
     private Instant appliedAt;
     private Instant updatedAt;
 }
-

@@ -1,0 +1,12 @@
+package com.jobportal.recruiter.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data
+@AllArgsConstructor
+public class UploadJobAttachmentResponse {
+    private String url;
+    private String originalName;
+}
+

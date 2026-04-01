@@ -49,6 +49,9 @@ public class AuthService {
     @Value("${password.reset.debug:false}")
     private boolean passwordResetDebug;
 
+    @Value("${app.frontend.origin:http://localhost:3000}")
+    private String frontendOrigin;
+
     public void register(RegisterRequest req) {
         String email = req.getEmail().trim().toLowerCase();
         if (userRepository.existsByEmailIgnoreCase(email)) {
@@ -128,43 +131,74 @@ public class AuthService {
     }
 
     public ForgotPasswordResponse forgotPassword(String email) {
-        // Do not reveal whether the email exists.
-        var userOpt = userRepository.findByEmailIgnoreCase(email);
-        if (userOpt.isEmpty() || !userOpt.get().isEnabled()) {
+        // If email service isn't configured, return a non-leaky message for all requests.
+        // This avoids "silent success" that confuses users, and doesn't reveal whether the email exists.
+        boolean mailConfigured = emailService.isConfigured();
+        if (!mailConfigured) {
             return ForgotPasswordResponse.builder()
-                    .message("If the account exists, a reset link has been sent.")
+                    .message(
+                            "Password reset email service is not configured. Set SMTP_* environment variables and try again.")
                     .debugToken(null)
+                    .debugLink(null)
+                    .emailServiceConfigured(false)
                     .build();
         }
 
-        var user = userOpt.get();
-        String token = generateToken();
-        String tokenHash = sha256Hex(token);
+        // Do not reveal whether the email exists.
+        // To avoid "silent success" for users (and avoid leaking existence via SMTP failures),
+        // we always attempt to send an email to the requested address.
+        // If the account exists: email contains a real reset link.
+        // If not: email contains generic guidance (no reset link).
+        String normalizedEmail = (email == null) ? "" : email.trim().toLowerCase();
+        var userOpt = userRepository.findByEmailIgnoreCase(normalizedEmail);
 
-        var prt = new PasswordResetToken();
-        prt.setUser(user);
-        prt.setTokenSha256(tokenHash);
-        prt.setExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES));
-        passwordResetTokenRepository.save(prt);
+        String subject = "Reset Your Password";
+        String body;
+        String token = null;
+        String link = null;
 
-        String link =
-                "http://localhost:3000/reset-password?email="
-                        + urlEncode(user.getEmail())
-                        + "&token="
-                        + urlEncode(token);
+        if (userOpt.isPresent()) {
+            var user = userOpt.get();
+            token = generateToken();
+            String tokenHash = sha256Hex(token);
 
-        String body =
-                "We received a request to reset your password.\n\n"
-                        + "Use this link to set a new password (valid for 15 minutes):\n"
-                        + link
-                        + "\n\n"
-                        + "If you did not request this, you can ignore this email.";
+            var prt = new PasswordResetToken();
+            prt.setUser(user);
+            prt.setTokenSha256(tokenHash);
+            prt.setExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES));
+            passwordResetTokenRepository.save(prt);
 
-        emailService.send(user.getEmail(), "Password Reset - IT Job Portal", body);
+            String base = (frontendOrigin == null || frontendOrigin.isBlank()) ? "http://localhost:3000" : frontendOrigin.trim();
+            if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+            link =
+                    base
+                            + "/reset-password?email="
+                            + urlEncode(user.getEmail())
+                            + "&token="
+                            + urlEncode(token);
+
+            body =
+                    "We received a request to reset your password.\n\n"
+                            + "Use this link to set a new password (valid for 15 minutes):\n"
+                            + link
+                            + "\n\n"
+                            + "If you did not request this, you can ignore this email.";
+        } else {
+            body =
+                    "We received a request to reset a password for this email address.\n\n"
+                            + "If you have an account, please make sure you entered the same email you used during registration and try again.\n"
+                            + "If you do not have an account, you can register on the portal.\n\n"
+                            + "If you did not request this, you can ignore this email.";
+        }
+
+        // Send to the requested email address (always), so users get feedback in their inbox.
+        emailService.send(normalizedEmail, subject, body);
 
         return ForgotPasswordResponse.builder()
                 .message("If the account exists, a reset link has been sent.")
                 .debugToken(passwordResetDebug ? token : null)
+                .debugLink(passwordResetDebug ? link : null)
+                .emailServiceConfigured(true)
                 .build();
     }
 
@@ -195,8 +229,29 @@ public class AuthService {
         token.setUsedAt(Instant.now());
         passwordResetTokenRepository.save(token);
 
-        user.setPasswordHash(passwordEncoder.encode(req.getNewPassword()));
+        String hashed = passwordEncoder.encode(req.getNewPassword());
+        // Keep legacy columns in sync.
+        user.setPassword(hashed);
+        user.setPasswordHash(hashed);
         userRepository.save(user);
+    }
+
+    public void validateResetToken(String email, String tokenPlain) {
+        var user =
+                userRepository
+                        .findByEmailIgnoreCase(email)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.BAD_REQUEST, "Link expired or invalid"));
+        String tokenHash = sha256Hex(tokenPlain);
+        passwordResetTokenRepository
+                .findTopByUserIdAndTokenSha256AndUsedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(
+                        user.getId(), tokenHash, Instant.now())
+                .orElseThrow(
+                        () ->
+                                new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST, "Link expired or invalid"));
     }
 
     private static String nullToEmpty(String s) {

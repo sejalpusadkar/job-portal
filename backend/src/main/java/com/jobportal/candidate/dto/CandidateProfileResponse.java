@@ -12,6 +12,8 @@ public class CandidateProfileResponse {
     private Long id;
     private String email;
     private String fullName;
+    private String roleTitle;
+    private String location;
     private String phone;
     private String education;
     private String professionalSummary;

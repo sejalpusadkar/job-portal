@@ -10,5 +10,6 @@ import lombok.Data;
 public class ForgotPasswordResponse {
     private String message;
     private String debugToken;
+    private String debugLink;
+    private boolean emailServiceConfigured;
 }
-

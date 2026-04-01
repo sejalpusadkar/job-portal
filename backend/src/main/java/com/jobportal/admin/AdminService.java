@@ -7,6 +7,12 @@ import com.jobportal.admin.dto.AdminUserResponse;
 import com.jobportal.admin.dto.PendingRecruiterResponse;
 import com.jobportal.application.JobApplicationRepository;
 import com.jobportal.job.JobPostingRepository;
+import com.jobportal.candidate.CandidateProfileRepository;
+import com.jobportal.post.CandidatePostRepository;
+import com.jobportal.post.RecruiterPostRepository;
+import com.jobportal.notification.NotificationRepository;
+import com.jobportal.interview.InterviewRepository;
+import com.jobportal.activity.ActivityRepository;
 import com.jobportal.recruiter.RecruiterProfileRepository;
 import com.jobportal.user.Role;
 import com.jobportal.user.UserRepository;
@@ -22,8 +28,14 @@ import org.springframework.web.server.ResponseStatusException;
 public class AdminService {
     private final UserRepository userRepository;
     private final RecruiterProfileRepository recruiterProfileRepository;
+    private final CandidateProfileRepository candidateProfileRepository;
     private final JobPostingRepository jobPostingRepository;
     private final JobApplicationRepository jobApplicationRepository;
+    private final CandidatePostRepository candidatePostRepository;
+    private final RecruiterPostRepository recruiterPostRepository;
+    private final NotificationRepository notificationRepository;
+    private final InterviewRepository interviewRepository;
+    private final ActivityRepository activityRepository;
 
     @Transactional(readOnly = true)
     public List<PendingRecruiterResponse> pendingRecruiters() {
@@ -96,8 +108,36 @@ public class AdminService {
     public void deleteUser(Long userId) {
         var u = userRepository.findById(userId).orElse(null);
         if (u == null) return;
-        u.setEnabled(false);
-        userRepository.save(u);
+        // Hard delete with cleanup so UI instantly reflects changes and avoids FK issues.
+        // This is admin-only.
+        try {
+            // Candidate-specific cleanup
+            candidateProfileRepository.findByUserId(userId).ifPresent(candidateProfileRepository::delete);
+            candidatePostRepository.findTop50ByCandidateUserIdOrderByCreatedAtDesc(userId).forEach(candidatePostRepository::delete);
+            interviewRepository.findByCandidateUserIdOrderByScheduledAtAsc(userId).forEach(interviewRepository::delete);
+
+            // Recruiter-specific cleanup
+            recruiterProfileRepository.findByUserId(userId).ifPresent(recruiterProfileRepository::delete);
+            recruiterPostRepository.findTop50ByRecruiterUserIdOrderByCreatedAtDesc(userId).forEach(recruiterPostRepository::delete);
+            interviewRepository.findByRecruiterUserIdOrderByScheduledAtAsc(userId).forEach(interviewRepository::delete);
+
+            // Applications (both sides)
+            jobApplicationRepository.findByCandidateUserIdOrderByAppliedAtDesc(userId).forEach(jobApplicationRepository::delete);
+            jobPostingRepository.findByRecruiterUserIdOrderByCreatedAtDesc(userId).forEach(jobPostingRepository::delete);
+
+            // Notifications
+            notificationRepository.findTop100ByRecipientUserIdOrderByCreatedAtDesc(userId).forEach(notificationRepository::delete);
+
+            // Activities owned by recruiter
+            activityRepository.deleteByRecruiterUserId(userId);
+        } catch (Exception ignored) {
+            // If cleanup fails, fall back to disabling the user.
+            u.setEnabled(false);
+            userRepository.save(u);
+            return;
+        }
+
+        userRepository.delete(u);
     }
 
     @Transactional(readOnly = true)

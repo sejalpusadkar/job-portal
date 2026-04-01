@@ -42,6 +42,24 @@ public class JobPosting {
     @Column(nullable = false)
     private int minExperienceYears = 0;
 
+    // Salary/CTC fields (structured). Units:
+    // - If frequency = YEARLY: values represent LPA (Lakhs Per Annum) for easier input/display.
+    // - If frequency = MONTHLY: values represent thousands per month (K) for easier input/display.
+    @Column(nullable = false)
+    private int minCtc = 0;
+
+    @Column(nullable = false)
+    private int maxCtc = 0;
+
+    @Column(nullable = false, length = 8)
+    private String ctcCurrency = "INR";
+
+    @Column(nullable = false, length = 16)
+    private String ctcFrequency = "YEARLY"; // YEARLY | MONTHLY
+
+    @Column(nullable = false)
+    private boolean salaryHidden = false;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "job_required_skills", joinColumns = @JoinColumn(name = "job_id"))
     @Column(name = "skill", nullable = false, length = 64)
@@ -56,7 +74,14 @@ public class JobPosting {
     @Column(nullable = false, length = 16)
     private JobStatus status = JobStatus.ACTIVE;
 
+    // Optional attachment for job posting (e.g., PDF JD or an image).
+    // Stored as a URL (e.g. /uploads/...), not as raw bytes.
+    @Column(nullable = false, length = 512)
+    private String attachmentUrl = "";
+
+    @Column(nullable = false, length = 255)
+    private String attachmentName = "";
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 }
-

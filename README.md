@@ -6,27 +6,30 @@ Monorepo layout:
 - `backend/` Java 17 + Spring Boot REST API
 - `database/` (optional) SQL/scripts place
 
-## 0) Production-Ready Run (Docker)
+## 0) Deployment (Vercel + Render + Railway)
+
+See: `DEPLOYMENT.md`
+
+## 1) Local Run (Docker)
 
 Prereqs: Docker Desktop installed.
 
-From the project root:
+From the project root (local only):
 
 ```bash
 cp .env.example .env
-# Edit .env and set JWT_SECRET (32+ chars) and SMTP_* (required for password reset emails)
+# Edit .env and set passwords/secrets.
 docker compose up --build
 ```
 
 Open:
 
 - Frontend: `http://localhost:3000`
-- Backend ping: `http://localhost:8081/api/auth/ping`
+- Backend ping: `http://localhost:8080/api/auth/ping`
 
 Notes:
 
-- MySQL root password is **root123** (as requested).
-- For production you MUST change `JWT_SECRET` in `docker-compose.yml` (32+ chars).
+- Do not commit real secrets.
 - Database schema is created by Flyway migrations in `backend/src/main/resources/db/migration`.
 
 ## 1) Prerequisites
@@ -76,10 +79,10 @@ mvn -Dmaven.repo.local=$PWD/.m2/repository package -DskipTests
 java -jar target/backend-0.0.1-SNAPSHOT.jar
 ```
 
-Backend runs on:
+Backend runs on (default):
 
-- `http://localhost:8081`
-- API base: `http://localhost:8081/api`
+- `http://localhost:8080`
+- API base: `http://localhost:8080/api`
 
 ### If Registration/Login Fails
 
@@ -146,7 +149,7 @@ Frontend runs on:
 If backend runs elsewhere, set:
 
 ```bash
-export REACT_APP_API_BASE_URL=http://localhost:8081/api
+export REACT_APP_API_BASE_URL=http://localhost:8080/api/
 ```
 
 ## 5) Role Workflows

@@ -6,10 +6,16 @@ import com.jobportal.recruiter.dto.RecruiterApplicationResponse;
 import com.jobportal.recruiter.dto.RecruiterJobResponse;
 import com.jobportal.recruiter.dto.RecruiterProfileRequest;
 import com.jobportal.recruiter.dto.RecruiterProfileResponse;
+import com.jobportal.recruiter.dto.RecruiterNotificationResponse;
 import com.jobportal.recruiter.dto.SendEmailRequest;
 import com.jobportal.recruiter.dto.UpdateApplicationStatusRequest;
+import com.jobportal.recruiter.dto.UploadJobAttachmentResponse;
 import com.jobportal.recruiter.dto.UploadRecruiterPhotoResponse;
 import com.jobportal.common.FileStorageService;
+import com.jobportal.candidate.CandidateService;
+import com.jobportal.candidate.dto.CandidateProfileResponse;
+import com.jobportal.notification.NotificationService;
+import com.jobportal.notification.NotificationType;
 import com.jobportal.post.PostService;
 import com.jobportal.post.dto.PostResponse;
 import com.jobportal.security.UserPrincipal;
@@ -41,6 +47,8 @@ public class RecruiterController {
     private final RecruiterProfileService recruiterProfileService;
     private final FileStorageService fileStorageService;
     private final PostService postService;
+    private final CandidateService candidateService;
+    private final NotificationService notificationService;
 
     @GetMapping("/profile")
     public RecruiterProfileResponse profile(Authentication auth) {
@@ -78,6 +86,15 @@ public class RecruiterController {
         return postService.createPost(recruiterUserId, caption, imageUrl);
     }
 
+    @PostMapping(value = "/job-attachment", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public UploadJobAttachmentResponse uploadJobAttachment(
+            Authentication auth, @RequestPart("file") MultipartFile file) {
+        Long recruiterUserId = ((UserPrincipal) auth.getPrincipal()).getId();
+        String url = fileStorageService.storeJobAttachment(recruiterUserId, file);
+        String original = (file.getOriginalFilename() == null) ? "" : file.getOriginalFilename();
+        return new UploadJobAttachmentResponse(url, original);
+    }
+
     @GetMapping("/jobs")
     public List<RecruiterJobResponse> myJobs(Authentication auth) {
         Long recruiterUserId = ((UserPrincipal) auth.getPrincipal()).getId();
@@ -111,6 +128,32 @@ public class RecruiterController {
         return recruiterService.matchedCandidates(recruiterUserId, jobId);
     }
 
+    // Full candidate profile view for recruiters (LinkedIn-style full page on frontend).
+    @GetMapping("/candidates/{candidateUserId}/profile")
+    public CandidateProfileResponse candidateProfile(Authentication auth, @PathVariable Long candidateUserId) {
+        Long recruiterUserId = ((UserPrincipal) auth.getPrincipal()).getId();
+        // Ensure recruiter is approved (controller already has PreAuthorize, but keep defense-in-depth).
+        recruiterService.ensureRecruiterApproved(recruiterUserId);
+
+        var profile = candidateService.getProfile(candidateUserId);
+
+        String company = "";
+        try {
+            var rp = recruiterProfileService.getProfile(recruiterUserId);
+            company = (rp == null || rp.getCompanyName() == null) ? "" : rp.getCompanyName();
+        } catch (Exception ignored) {
+            company = "";
+        }
+        notificationService.notifyUser(
+                candidateUserId,
+                recruiterUserId,
+                NotificationType.PROFILE_VIEWED,
+                "Profile Viewed",
+                (company.isBlank() ? "A recruiter" : company) + " viewed your profile",
+                "/candidate-dashboard?page=profile");
+        return profile;
+    }
+
     @GetMapping("/jobs/{jobId}/applications")
     public List<RecruiterApplicationResponse> applications(Authentication auth, @PathVariable Long jobId) {
         Long recruiterUserId = ((UserPrincipal) auth.getPrincipal()).getId();
@@ -135,5 +178,11 @@ public class RecruiterController {
             @Valid @RequestBody SendEmailRequest req) {
         Long recruiterUserId = ((UserPrincipal) auth.getPrincipal()).getId();
         recruiterService.emailCandidate(recruiterUserId, applicationId, req.getSubject(), req.getMessage());
+    }
+
+    @GetMapping("/notifications")
+    public List<RecruiterNotificationResponse> notifications(Authentication auth) {
+        Long recruiterUserId = ((UserPrincipal) auth.getPrincipal()).getId();
+        return recruiterService.notifications(recruiterUserId);
     }
 }

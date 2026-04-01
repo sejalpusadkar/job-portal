@@ -11,6 +11,8 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
 
     List<JobPosting> findByRecruiterUserIdOrderByCreatedAtDesc(Long recruiterUserId);
 
+    long countByRecruiterUserIdAndStatus(Long recruiterUserId, JobStatus status);
+
     Optional<JobPosting> findByIdAndRecruiterUserId(Long id, Long recruiterUserId);
 
     @Query("select jp from JobPosting jp join fetch jp.recruiterUser ru where jp.status = :status")

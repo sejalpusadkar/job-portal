@@ -54,6 +54,36 @@ public class PostService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<PostResponse> recruiterPosts(Long recruiterUserId, Long viewerUserId) {
+        var posts = recruiterPostRepository.findTop50ByRecruiterUserIdOrderByCreatedAtDesc(recruiterUserId);
+        Map<Long, String> companyByUserId =
+                recruiterProfileRepository.findByUserIdIn(List.of(recruiterUserId)).stream()
+                        .collect(Collectors.toMap(rp -> rp.getUserId(), rp -> rp.getCompanyName()));
+        Map<Long, String> photoByUserId =
+                recruiterProfileRepository.findByUserIdIn(List.of(recruiterUserId)).stream()
+                        .collect(Collectors.toMap(rp -> rp.getUserId(), rp -> rp.getProfilePhotoUrl()));
+
+        return posts.stream()
+                .map(
+                        p ->
+                                PostResponse.builder()
+                                        .id(p.getId())
+                                        .recruiterUserId(p.getRecruiterUser().getId())
+                                        .recruiterEmail(p.getRecruiterUser().getEmail())
+                                        .companyName(companyByUserId.getOrDefault(p.getRecruiterUser().getId(), ""))
+                                        .recruiterPhotoUrl(photoByUserId.getOrDefault(p.getRecruiterUser().getId(), ""))
+                                        .caption(p.getCaption())
+                                        .imageUrl(p.getImageUrl())
+                                        .likeCount((int) postLikeRepository.countByPostId(p.getId()))
+                                        .commentCount((int) postCommentRepository.countByPostId(p.getId()))
+                                        .shareCount(p.getShareCount())
+                                        .likedByMe(postLikeRepository.existsByPostIdAndUserId(p.getId(), viewerUserId))
+                                        .createdAt(p.getCreatedAt())
+                                        .build())
+                .toList();
+    }
+
     @Transactional
     public PostResponse createPost(Long recruiterUserId, String caption, String imageUrl) {
         var recruiter =
@@ -151,4 +181,3 @@ public class PostService {
         recruiterPostRepository.save(post);
     }
 }
-

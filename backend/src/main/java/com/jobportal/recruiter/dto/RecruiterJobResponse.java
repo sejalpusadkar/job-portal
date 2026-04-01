@@ -15,9 +15,15 @@ public class RecruiterJobResponse {
     private String title;
     private String description;
     private int minExperienceYears;
+    private int minCtc;
+    private int maxCtc;
+    private String ctcCurrency;
+    private String ctcFrequency;
+    private boolean salaryHidden;
     private Set<String> requiredSkills;
     private Set<String> keywords;
     private JobStatus status;
+    private String attachmentUrl;
+    private String attachmentName;
     private Instant createdAt;
 }
-

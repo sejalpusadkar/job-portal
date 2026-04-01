@@ -10,6 +10,8 @@ public class CandidateProfileRequest {
     @NotBlank private String fullName;
     @NotBlank private String phone;
     private String education = "";
+    private String roleTitle = "";
+    private String location = "";
     private String professionalSummary = "";
     // Data URL (base64) from the UI. Keep small (client enforces a size limit).
     private String profilePhotoDataUrl = "";

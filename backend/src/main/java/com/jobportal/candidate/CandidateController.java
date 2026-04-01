@@ -13,6 +13,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,6 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.MediaType;
+import com.jobportal.candidate.dto.CandidateCertificateResponse;
+import com.jobportal.candidate.dto.CandidateApplicationDetailResponse;
 
 @RestController
 @RequestMapping("/api/candidate")
@@ -78,5 +81,32 @@ public class CandidateController {
     public List<ApplicationResponse> applications(Authentication auth) {
         Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
         return candidateService.applications(userId);
+    }
+
+    @GetMapping("/applications/{applicationId}")
+    public CandidateApplicationDetailResponse applicationDetail(
+            Authentication auth, @PathVariable Long applicationId) {
+        Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
+        return candidateService.applicationDetail(userId, applicationId);
+    }
+
+    @GetMapping("/certificates")
+    public List<CandidateCertificateResponse> certificates(Authentication auth) {
+        Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
+        return candidateService.certificates(userId);
+    }
+
+    @PostMapping(value = "/certificates", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public List<CandidateCertificateResponse> uploadCertificates(
+            Authentication auth, @RequestPart("files") List<MultipartFile> files) {
+        Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
+        return candidateService.uploadCertificates(userId, files);
+    }
+
+    @DeleteMapping("/certificates/{certificateId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteCertificate(Authentication auth, @PathVariable Long certificateId) {
+        Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
+        candidateService.deleteCertificate(userId, certificateId);
     }
 }

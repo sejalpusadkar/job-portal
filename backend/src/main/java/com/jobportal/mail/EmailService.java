@@ -20,11 +20,29 @@ public class EmailService {
     @Value("${spring.mail.username:}")
     private String from;
 
+    @Value("${spring.mail.from:}")
+    private String fromOverride;
+
+    @Value("${spring.mail.host:}")
+    private String host;
+
+    @Value("${spring.mail.password:}")
+    private String password;
+
     @Value("${mail.required:false}")
     private boolean mailRequired;
 
+    public boolean isConfigured() {
+        return host != null
+                && !host.isBlank()
+                && from != null
+                && !from.isBlank()
+                && password != null
+                && !password.isBlank();
+    }
+
     public void send(String to, String subject, String text) {
-        if (from == null || from.isBlank()) {
+        if (!isConfigured()) {
             if (mailRequired) {
                 throw new ResponseStatusException(
                         HttpStatus.SERVICE_UNAVAILABLE,
@@ -34,11 +52,22 @@ public class EmailService {
             log.info("Email skipped (SMTP not configured). To={}, Subject={}, Text={}", to, subject, text);
             return;
         }
+        log.info("Sending email. To={}, Subject={}", to, subject);
         var msg = new SimpleMailMessage();
-        msg.setFrom(from);
+        String effectiveFrom =
+                (fromOverride != null && !fromOverride.isBlank()) ? fromOverride : from;
+        msg.setFrom(effectiveFrom);
         msg.setTo(to);
         msg.setSubject(subject);
         msg.setText(text);
-        mailSender.send(msg);
+        try {
+            mailSender.send(msg);
+            log.info("Email sent. To={}, Subject={}", to, subject);
+        } catch (Exception e) {
+            log.error("Email send FAILED. To={}, Subject={}", to, subject, e);
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Email delivery failed. Check SMTP settings (Gmail App Password) and try again.");
+        }
     }
 }

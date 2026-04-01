@@ -7,10 +7,15 @@ import com.jobportal.job.JobPosting;
 import com.jobportal.job.JobPostingRepository;
 import com.jobportal.mail.EmailService;
 import com.jobportal.matching.MatchingService;
+import com.jobportal.notification.NotificationService;
+import com.jobportal.notification.NotificationType;
+import com.jobportal.activity.ActivityService;
+import com.jobportal.activity.ActivityType;
 import com.jobportal.recruiter.dto.JobUpsertRequest;
 import com.jobportal.recruiter.dto.MatchedCandidateResponse;
 import com.jobportal.recruiter.dto.RecruiterApplicationResponse;
 import com.jobportal.recruiter.dto.RecruiterJobResponse;
+import com.jobportal.recruiter.dto.RecruiterNotificationResponse;
 import com.jobportal.user.Role;
 import com.jobportal.user.UserRepository;
 import java.time.Instant;
@@ -31,6 +36,8 @@ public class RecruiterService {
     private final JobApplicationRepository jobApplicationRepository;
     private final MatchingService matchingService;
     private final EmailService emailService;
+    private final NotificationService notificationService;
+    private final ActivityService activityService;
 
     @Transactional(readOnly = true)
     public List<RecruiterJobResponse> myJobs(Long recruiterUserId) {
@@ -44,21 +51,57 @@ public class RecruiterService {
     public RecruiterJobResponse createJob(Long recruiterUserId, JobUpsertRequest req) {
         var recruiter = ensureRecruiterApproved(recruiterUserId);
 
+        int minCtc = Math.max(0, req.getMinCtc());
+        int maxCtc = Math.max(0, req.getMaxCtc());
+        if (minCtc <= 0 || maxCtc <= 0 || minCtc > maxCtc) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please enter valid salary range");
+        }
+        String currency = (req.getCtcCurrency() == null) ? "INR" : req.getCtcCurrency().trim().toUpperCase();
+        String freq = (req.getCtcFrequency() == null) ? "YEARLY" : req.getCtcFrequency().trim().toUpperCase();
+        if (!freq.equals("YEARLY") && !freq.equals("MONTHLY")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid salary frequency");
+        }
+
         var job = new JobPosting();
         job.setRecruiterUser(recruiter);
         job.setTitle(req.getTitle().trim());
         job.setDescription(req.getDescription() == null ? "" : req.getDescription().trim());
         job.setMinExperienceYears(Math.max(0, req.getMinExperienceYears()));
+        job.setMinCtc(minCtc);
+        job.setMaxCtc(maxCtc);
+        job.setCtcCurrency(currency);
+        job.setCtcFrequency(freq);
+        job.setSalaryHidden(req.isSalaryHidden());
         job.setRequiredSkills(TextUtils.normalizeTokens(req.getRequiredSkills()));
         job.setKeywords(TextUtils.normalizeTokens(req.getKeywords()));
         job.setStatus(req.getStatus());
+        job.setAttachmentUrl(req.getAttachmentUrl() == null ? "" : req.getAttachmentUrl().trim());
+        job.setAttachmentName(req.getAttachmentName() == null ? "" : req.getAttachmentName().trim());
         jobPostingRepository.save(job);
+
+        activityService.log(
+                recruiterUserId,
+                ActivityType.JOB_CREATED,
+                "New job posted: " + job.getTitle(),
+                job.getId(),
+                null);
+
         return toJobDto(job);
     }
 
     @Transactional
     public RecruiterJobResponse updateJob(Long recruiterUserId, Long jobId, JobUpsertRequest req) {
         ensureRecruiterApproved(recruiterUserId);
+        int minCtc = Math.max(0, req.getMinCtc());
+        int maxCtc = Math.max(0, req.getMaxCtc());
+        if (minCtc <= 0 || maxCtc <= 0 || minCtc > maxCtc) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please enter valid salary range");
+        }
+        String currency = (req.getCtcCurrency() == null) ? "INR" : req.getCtcCurrency().trim().toUpperCase();
+        String freq = (req.getCtcFrequency() == null) ? "YEARLY" : req.getCtcFrequency().trim().toUpperCase();
+        if (!freq.equals("YEARLY") && !freq.equals("MONTHLY")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid salary frequency");
+        }
         var job =
                 jobPostingRepository
                         .findByIdAndRecruiterUserId(jobId, recruiterUserId)
@@ -69,10 +112,25 @@ public class RecruiterService {
         job.setTitle(req.getTitle().trim());
         job.setDescription(req.getDescription() == null ? "" : req.getDescription().trim());
         job.setMinExperienceYears(Math.max(0, req.getMinExperienceYears()));
+        job.setMinCtc(minCtc);
+        job.setMaxCtc(maxCtc);
+        job.setCtcCurrency(currency);
+        job.setCtcFrequency(freq);
+        job.setSalaryHidden(req.isSalaryHidden());
         job.setRequiredSkills(TextUtils.normalizeTokens(req.getRequiredSkills()));
         job.setKeywords(TextUtils.normalizeTokens(req.getKeywords()));
         job.setStatus(req.getStatus());
+        job.setAttachmentUrl(req.getAttachmentUrl() == null ? "" : req.getAttachmentUrl().trim());
+        job.setAttachmentName(req.getAttachmentName() == null ? "" : req.getAttachmentName().trim());
         jobPostingRepository.save(job);
+
+        activityService.log(
+                recruiterUserId,
+                ActivityType.JOB_EDITED,
+                "Job updated: " + job.getTitle(),
+                job.getId(),
+                null);
+
         return toJobDto(job);
     }
 
@@ -86,7 +144,15 @@ public class RecruiterService {
                                 () ->
                                         new ResponseStatusException(
                                                 HttpStatus.NOT_FOUND, "Job not found"));
+        String title = job.getTitle();
         jobPostingRepository.delete(job);
+
+        activityService.log(
+                recruiterUserId,
+                ActivityType.JOB_DELETED,
+                "Job deleted: " + (title == null ? "Job" : title),
+                jobId,
+                null);
     }
 
     @Transactional(readOnly = true)
@@ -182,6 +248,31 @@ public class RecruiterService {
         app.setStatus(status);
         app.setUpdatedAt(Instant.now());
         jobApplicationRepository.save(app);
+
+        String jobTitle = app.getJob().getTitle();
+        String msg =
+                switch (status) {
+                    case APPLIED -> "Your application was received for " + jobTitle;
+                    case SHORTLISTED -> "You were shortlisted for " + jobTitle;
+                    case TECHNICAL -> "You moved to technical round for " + jobTitle;
+                    case FINAL_INTERVIEW -> "You moved to final interview for " + jobTitle;
+                    case OFFER -> "You received an offer update for " + jobTitle;
+                    case REJECTED -> "Your application was rejected for " + jobTitle;
+                };
+        notificationService.notifyUser(
+                app.getCandidateUser().getId(),
+                recruiterUserId,
+                NotificationType.APPLICATION_UPDATE,
+                "Application Update",
+                msg,
+                "/candidate-dashboard?page=applications");
+
+        activityService.log(
+                recruiterUserId,
+                ActivityType.APPLICATION_STATUS_CHANGED,
+                "Candidate moved to " + status + " for " + jobTitle,
+                app.getJob().getId(),
+                app.getCandidateUser().getId());
     }
 
     @Transactional
@@ -203,6 +294,51 @@ public class RecruiterService {
                         + "\n\n"
                         + "Regards,\nIT Job Portal Recruiter";
         emailService.send(to, subject, body);
+
+        notificationService.notifyUser(
+                app.getCandidateUser().getId(),
+                recruiterUserId,
+                NotificationType.RECRUITER_MESSAGE,
+                "New Message from Recruiter",
+                (subject == null || subject.isBlank())
+                        ? "You received a message about " + app.getJob().getTitle()
+                        : subject,
+                "/candidate-dashboard?page=notifications");
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecruiterNotificationResponse> notifications(Long recruiterUserId) {
+        ensureRecruiterApproved(recruiterUserId);
+        return jobApplicationRepository.findTop50ByJobRecruiterUserIdOrderByUpdatedAtDesc(recruiterUserId).stream()
+                .map(
+                        app -> {
+                            String email = app.getCandidateUser().getEmail();
+                            String jobTitle = app.getJob().getTitle();
+                            String type =
+                                    switch (app.getStatus()) {
+                                        case APPLIED -> "APPLICATION";
+                                        case SHORTLISTED -> "SHORTLIST";
+                                        case TECHNICAL -> "TECHNICAL";
+                                        case FINAL_INTERVIEW -> "FINAL_INTERVIEW";
+                                        case OFFER -> "OFFER";
+                                        case REJECTED -> "REJECTION";
+                                    };
+                            String msg =
+                                    switch (app.getStatus()) {
+                                        case APPLIED -> email + " applied to " + jobTitle;
+                                        case SHORTLISTED -> email + " shortlisted for " + jobTitle;
+                                        case TECHNICAL -> email + " moved to technical for " + jobTitle;
+                                        case FINAL_INTERVIEW -> email + " moved to final interview for " + jobTitle;
+                                        case OFFER -> email + " moved to offer for " + jobTitle;
+                                        case REJECTED -> email + " rejected for " + jobTitle;
+                                    };
+                            return RecruiterNotificationResponse.builder()
+                                    .type(type)
+                                    .message(msg)
+                                    .createdAt(app.getUpdatedAt())
+                                    .build();
+                        })
+                .toList();
     }
 
     private static RecruiterJobResponse toJobDto(JobPosting job) {
@@ -211,14 +347,21 @@ public class RecruiterService {
                 .title(job.getTitle())
                 .description(job.getDescription())
                 .minExperienceYears(job.getMinExperienceYears())
+                .minCtc(job.getMinCtc())
+                .maxCtc(job.getMaxCtc())
+                .ctcCurrency(job.getCtcCurrency())
+                .ctcFrequency(job.getCtcFrequency())
+                .salaryHidden(job.isSalaryHidden())
                 .requiredSkills(job.getRequiredSkills())
                 .keywords(job.getKeywords())
                 .status(job.getStatus())
+                .attachmentUrl(job.getAttachmentUrl())
+                .attachmentName(job.getAttachmentName())
                 .createdAt(job.getCreatedAt())
                 .build();
     }
 
-    private com.jobportal.user.User ensureRecruiterApproved(Long recruiterUserId) {
+    public com.jobportal.user.User ensureRecruiterApproved(Long recruiterUserId) {
         var user =
                 userRepository
                         .findById(recruiterUserId)

@@ -12,11 +12,17 @@ import lombok.Data;
 @AllArgsConstructor
 public class JobResponse {
     private Long id;
+    private Long recruiterUserId;
     private String companyName;
     private String recruiterEmail;
     private String title;
     private String description;
     private int minExperienceYears;
+    private int minCtc;
+    private int maxCtc;
+    private String ctcCurrency;
+    private String ctcFrequency;
+    private boolean salaryHidden;
     private Set<String> requiredSkills;
     private Set<String> keywords;
     private JobStatus status;
