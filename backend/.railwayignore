@@ -1,0 +1,6 @@
+.m2
+target
+uploads
+.env
+.DS_Store
+
