@@ -1,12 +1,13 @@
-FROM maven:3.9-eclipse-temurin-17 AS build
+# Use Maven + JDK to build
+FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
-COPY pom.xml .
-COPY src ./src
-RUN mvn -q -DskipTests package
+COPY . .
+RUN mvn clean package -DskipTests
 
-FROM eclipse-temurin:17-jre
+# Use lightweight JDK to run
+FROM eclipse-temurin:17-jdk
 WORKDIR /app
-COPY --from=build /app/target/backend-0.0.1-SNAPSHOT.jar /app/app.jar
+COPY --from=build /app/target/*.jar app.jar
+
 EXPOSE 8080
-ENV JAVA_OPTS=""
-ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar /app/app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

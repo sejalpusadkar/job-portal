@@ -3,4 +3,7 @@ backend/.env
 frontend/.env
 **/.DS_Store
 backend/target
+backend/uploads
 frontend/node_modules
+frontend/build
+.idea
