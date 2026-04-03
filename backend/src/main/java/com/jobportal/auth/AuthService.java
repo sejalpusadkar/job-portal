@@ -69,9 +69,12 @@ public class AuthService {
         }
 
         if (req.getRole() == Role.ADMIN) {
+            String providedCode =
+                    req.getAdminRegistrationCode() == null ? "" : req.getAdminRegistrationCode().trim();
+            String expectedCode = adminRegistrationCode == null ? "" : adminRegistrationCode.trim();
             if (adminRegistrationCode == null
                     || adminRegistrationCode.isBlank()
-                    || !adminRegistrationCode.equals(req.getAdminRegistrationCode())) {
+                    || !expectedCode.equals(providedCode)) {
                 throw new ResponseStatusException(
                         HttpStatus.FORBIDDEN,
                         "Admin registration is disabled (invalid admin registration code)");
