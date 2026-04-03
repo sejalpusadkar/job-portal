@@ -22,6 +22,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -35,6 +37,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
@@ -105,6 +108,30 @@ public class AuthService {
             persisted.setPassword(hashed);
             persisted.setPasswordHash(hashed);
             userRepository.saveAndFlush(persisted);
+            persisted =
+                    userRepository
+                            .findById(user.getId())
+                            .orElseThrow(
+                                    () ->
+                                            new ResponseStatusException(
+                                                    HttpStatus.INTERNAL_SERVER_ERROR,
+                                                    "Registration failed to persist user"));
+            ok =
+                    persisted.getPasswordHash() != null
+                            && !persisted.getPasswordHash().isBlank()
+                            && passwordEncoder.matches(req.getPassword(), persisted.getPasswordHash());
+        }
+        if (!ok) {
+            log.error(
+                    "Registration integrity check failed for email={} id={} enabled={} recruiterApproved={} hashBlank={}",
+                    email,
+                    persisted.getId(),
+                    persisted.isEnabled(),
+                    persisted.isRecruiterApproved(),
+                    persisted.getPasswordHash() == null || persisted.getPasswordHash().isBlank());
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Registration failed (password persistence). Please try again.");
         }
 
         if (req.getRole() == Role.CANDIDATE) {
@@ -129,6 +156,18 @@ public class AuthService {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(email, req.getPassword()));
         } catch (AuthenticationException ex) {
+            // Help diagnose "can register but can't login" issues without leaking details to the client.
+            userRepository
+                    .findByEmailIgnoreCase(email)
+                    .ifPresent(
+                            u ->
+                                    log.warn(
+                                            "Login failed for email={} id={} enabled={} recruiterApproved={} hashBlank={}",
+                                            email,
+                                            u.getId(),
+                                            u.isEnabled(),
+                                            u.isRecruiterApproved(),
+                                            u.getPasswordHash() == null || u.getPasswordHash().isBlank()));
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
 
