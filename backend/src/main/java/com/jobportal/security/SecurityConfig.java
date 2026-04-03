@@ -2,7 +2,6 @@ package com.jobportal.security;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -32,9 +31,6 @@ public class SecurityConfig {
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
-
-    @Value("${cors.allowed-origins:*}")
-    private String allowedOrigins;
 
     @PostConstruct
     void logStartup() {
@@ -127,17 +123,9 @@ public class SecurityConfig {
         // We deploy a SPA on a different origin (Vercel) and use Authorization headers (JWT).
         // Avoid cookies/credentials so we can safely allow wildcard origins when needed.
         cfg.setAllowCredentials(false);
-
-        var origins = java.util.Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .toList();
-
-        if (origins.isEmpty() || origins.contains("*")) {
-            cfg.setAllowedOriginPatterns(java.util.List.of("*"));
-        } else {
-            cfg.setAllowedOrigins(origins);
-        }
+        // Allow all origins.
+        // If you want to lock this down later, replace this with an explicit list from env/config.
+        cfg.setAllowedOriginPatterns(java.util.List.of("*"));
 
         cfg.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(java.util.List.of("*"));
