@@ -9,6 +9,9 @@ import com.jobportal.auth.dto.RegisterRequest;
 import com.jobportal.auth.dto.ResetPasswordRequest;
 import com.jobportal.security.UserPrincipal;
 import jakarta.validation.Valid;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -27,8 +30,11 @@ public class AuthController {
     private final AuthService authService;
 
     @GetMapping("/ping")
-    public String ping() {
-        return "ok";
+    public Map<String, Object> ping() {
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("status", "ok");
+        res.put("time", Instant.now().toString());
+        return res;
     }
 
     @PostMapping("/register")
