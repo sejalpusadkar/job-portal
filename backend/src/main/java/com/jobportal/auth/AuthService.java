@@ -29,6 +29,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -52,6 +53,7 @@ public class AuthService {
     @Value("${app.frontend.origin:http://localhost:3000}")
     private String frontendOrigin;
 
+    @Transactional
     public void register(RegisterRequest req) {
         String email = req.getEmail().trim().toLowerCase();
         if (userRepository.existsByEmailIgnoreCase(email)) {
@@ -83,7 +85,27 @@ public class AuthService {
         if (req.getRole() == Role.RECRUITER) {
             user.setRecruiterApproved(false);
         }
-        userRepository.save(user);
+        user = userRepository.saveAndFlush(user);
+
+        // Safety: if DB defaults/triggers ever alter the stored hash, fix it immediately so login works.
+        // This also makes registration failures obvious instead of creating "can't login" ghost accounts.
+        var persisted =
+                userRepository
+                        .findById(user.getId())
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.INTERNAL_SERVER_ERROR,
+                                                "Registration failed to persist user"));
+        boolean ok =
+                persisted.getPasswordHash() != null
+                        && !persisted.getPasswordHash().isBlank()
+                        && passwordEncoder.matches(req.getPassword(), persisted.getPasswordHash());
+        if (!ok) {
+            persisted.setPassword(hashed);
+            persisted.setPasswordHash(hashed);
+            userRepository.saveAndFlush(persisted);
+        }
 
         if (req.getRole() == Role.CANDIDATE) {
             var profile = new CandidateProfile();
@@ -102,16 +124,17 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest req) {
+        String email = req.getEmail() == null ? "" : req.getEmail().trim().toLowerCase();
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword()));
+                    new UsernamePasswordAuthenticationToken(email, req.getPassword()));
         } catch (AuthenticationException ex) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
 
         var user =
                 userRepository
-                        .findByEmailIgnoreCase(req.getEmail())
+                        .findByEmailIgnoreCase(email)
                         .orElseThrow(
                                 () ->
                                         new ResponseStatusException(
