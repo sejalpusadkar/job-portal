@@ -16,17 +16,6 @@ public class WebConfig implements WebMvcConfigurer {
     private String uploadDir;
 
     @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        // Global CORS for browser-based frontends (Vercel, etc.)
-        // For simplicity (and per requirement), allow all origins.
-        // We do not allow credentials because JWT is sent via Authorization header.
-        registry.addMapping("/**")
-                .allowedOriginPatterns("*")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*");
-    }
-
-    @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Example URL: /uploads/<filename>
         registry.addResourceHandler("/uploads/**")

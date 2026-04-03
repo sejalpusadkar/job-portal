@@ -1,20 +1,14 @@
-export const resolveBackendOrigin = () => {
-    // Preferred: set REACT_APP_API_BASE_URL (e.g. https://your-render.onrender.com/api/)
-    // We'll infer the backend origin from it.
-    const apiBase = process.env.REACT_APP_API_BASE_URL;
-    if (apiBase && apiBase.trim()) {
-        const trimmed = apiBase.trim().replace(/\/+$/, ''); // remove trailing slashes
-        // If it ends with /api, strip it to get the backend origin.
-        const withoutApi = trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;
-        return withoutApi.replace(/\/+$/, '');
-    }
+// Single source of truth:
+// Set this in Vercel as REACT_APP_API_BASE_URL=https://<your-railway-domain>
+// Keep it as the origin only (no trailing /api).
+export const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || '').trim().replace(/\/+$/, '');
 
-    const envOrigin = process.env.REACT_APP_BACKEND_ORIGIN;
-    if (envOrigin && envOrigin.trim()) return envOrigin.trim().replace(/\/+$/, '');
+export const resolveBackendOrigin = () => {
+    if (API_BASE_URL) return API_BASE_URL;
+
+    // Local fallback for dev when env isn't provided.
     const { protocol, hostname, origin } = window.location;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return `${protocol}//${hostname}:8080`;
-    }
+    if (hostname === 'localhost' || hostname === '127.0.0.1') return `${protocol}//${hostname}:8080`;
     return origin;
 };
 

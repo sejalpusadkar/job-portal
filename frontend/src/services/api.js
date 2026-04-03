@@ -1,24 +1,20 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../utils/url';
 
-// In dev, CRA proxy (package.json "proxy") can forward /api -> backend,
-// which avoids CORS and "wrong port" issues.
 // IMPORTANT: Keep a trailing slash so axios joins paths correctly:
 // baseURL '/api/' + 'auth/register' -> '/api/auth/register' (NOT '/apiauth/register')
-const normalizeApiBase = (v) => {
-    const raw = (v || '').trim();
-    if (!raw) return '/api/';
-
-    // If user provides only the origin (e.g. https://...up.railway.app),
-    // automatically append /api/.
+const normalizeApiBase = (origin) => {
+    const raw = (origin || '').trim();
+    if (!raw) return '/api/'; // local dev fallback
     const withoutTrailing = raw.replace(/\/+$/, '');
     if (withoutTrailing.endsWith('/api')) return `${withoutTrailing}/`;
     return `${withoutTrailing}/api/`;
 };
 
-const API_BASE_URL = normalizeApiBase(process.env.REACT_APP_API_BASE_URL);
+const API_ROOT = normalizeApiBase(API_BASE_URL);
 
 const API = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: API_ROOT,
     headers: { 'Content-Type': 'application/json' },
 });
 
