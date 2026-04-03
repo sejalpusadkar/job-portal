@@ -123,24 +123,24 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         var cfg = new CorsConfiguration();
-        // If "*" is used, we must use allowedOriginPatterns and MUST NOT allow credentials.
-        // This is safe because this app uses Authorization headers (JWT), not cookies.
-        boolean wildcard = false;
-        for (String origin : allowedOrigins.split(",")) {
-            String o = origin.trim();
-            if (o.isBlank()) continue;
-            if (o.equals("*")) {
-                wildcard = true;
-                continue;
-            }
-            cfg.addAllowedOrigin(o);
-        }
-        if (wildcard) {
-            cfg.addAllowedOriginPattern("*");
-        }
-        cfg.addAllowedHeader("*");
-        cfg.addAllowedMethod("*");
+
+        // We deploy a SPA on a different origin (Vercel) and use Authorization headers (JWT).
+        // Avoid cookies/credentials so we can safely allow wildcard origins when needed.
         cfg.setAllowCredentials(false);
+
+        var origins = java.util.Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .toList();
+
+        if (origins.isEmpty() || origins.contains("*")) {
+            cfg.setAllowedOriginPatterns(java.util.List.of("*"));
+        } else {
+            cfg.setAllowedOrigins(origins);
+        }
+
+        cfg.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        cfg.setAllowedHeaders(java.util.List.of("*"));
 
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);
