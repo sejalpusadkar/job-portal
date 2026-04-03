@@ -65,6 +65,11 @@ public class SecurityConfig {
         http.authorizeHttpRequests(
                 auth ->
                         auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                                // Public root/health endpoints (useful for Railway domain checks)
+                                .requestMatchers(HttpMethod.GET, "/")
+                                .permitAll()
+                                .requestMatchers(HttpMethod.GET, "/health")
+                                .permitAll()
                                 // Keep auth endpoints public (register/login/forgot/reset/me).
                                 // This avoids accidental 401s due to path variations or future additions.
                                 .requestMatchers("/api/auth/**")
