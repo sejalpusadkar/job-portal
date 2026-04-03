@@ -1,0 +1,109 @@
+/* Dashboard look & feel (Candidate/Recruiter/Admin)
+   Intent: interactive but lightweight (no new deps, works with MUI components). */
+
+.jp-dashboard {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(1100px 700px at 14% 12%, rgba(30, 64, 175, 0.22), rgba(30, 64, 175, 0) 62%),
+    radial-gradient(900px 600px at 92% 18%, rgba(2, 132, 199, 0.20), rgba(2, 132, 199, 0) 58%),
+    radial-gradient(900px 650px at 80% 92%, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0) 60%),
+    linear-gradient(180deg, #f6f8fb 0%, #eef3f8 55%, #f6f8fb 100%);
+}
+
+.jp-dashboard::before,
+.jp-dashboard::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0) 70%);
+  transform: translate3d(0, 0, 0);
+  filter: blur(24px);
+  opacity: 0.55;
+  animation: jpFloat 16s ease-in-out infinite;
+}
+
+.jp-dashboard::after {
+  opacity: 0.55;
+  animation-duration: 22s;
+  animation-direction: reverse;
+}
+
+@keyframes jpFloat {
+  0% { transform: translate(-2%, -1%) scale(1.02); }
+  50% { transform: translate(2%, 1%) scale(1.06); }
+  100% { transform: translate(-2%, -1%) scale(1.02); }
+}
+
+.jp-dashboard__inner {
+  position: relative;
+  z-index: 1;
+  padding: 28px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+/* Header accent line */
+.jp-dashboard__title {
+  position: relative;
+  display: inline-block;
+  letter-spacing: -0.02em;
+}
+
+.jp-dashboard__title::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: -8px;
+  bottom: -8px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(0, 113, 227, 0.25), rgba(0, 113, 227, 0));
+}
+
+/* MUI component polish within dashboards */
+.jp-dashboard .MuiCard-root {
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    0 10px 24px rgba(2, 6, 23, 0.06),
+    0 2px 8px rgba(2, 6, 23, 0.04);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.jp-dashboard .MuiCard-root:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 113, 227, 0.25);
+  box-shadow:
+    0 14px 34px rgba(2, 6, 23, 0.10),
+    0 4px 14px rgba(2, 6, 23, 0.06);
+}
+
+.jp-dashboard .MuiDivider-root {
+  border-color: rgba(15, 23, 42, 0.10);
+}
+
+.jp-dashboard .MuiButton-outlined {
+  border-color: rgba(0, 113, 227, 0.28);
+}
+
+.jp-dashboard .MuiButton-containedPrimary {
+  box-shadow: none;
+}
+
+.jp-dashboard .MuiButton-containedPrimary:hover {
+  box-shadow: 0 10px 22px rgba(0, 113, 227, 0.18);
+}
+
+@media (max-width: 600px) {
+  .jp-dashboard__inner {
+    padding: 18px;
+  }
+}

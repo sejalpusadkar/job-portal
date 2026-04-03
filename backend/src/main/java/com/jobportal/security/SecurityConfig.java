@@ -33,7 +33,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
 
-    @Value("${cors.allowed-origins:http://localhost:3000}")
+    @Value("${cors.allowed-origins:*}")
     private String allowedOrigins;
 
     @PostConstruct
@@ -123,13 +123,24 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         var cfg = new CorsConfiguration();
+        // If "*" is used, we must use allowedOriginPatterns and MUST NOT allow credentials.
+        // This is safe because this app uses Authorization headers (JWT), not cookies.
+        boolean wildcard = false;
         for (String origin : allowedOrigins.split(",")) {
             String o = origin.trim();
-            if (!o.isBlank()) cfg.addAllowedOrigin(o);
+            if (o.isBlank()) continue;
+            if (o.equals("*")) {
+                wildcard = true;
+                continue;
+            }
+            cfg.addAllowedOrigin(o);
+        }
+        if (wildcard) {
+            cfg.addAllowedOriginPattern("*");
         }
         cfg.addAllowedHeader("*");
         cfg.addAllowedMethod("*");
-        cfg.setAllowCredentials(true);
+        cfg.setAllowCredentials(false);
 
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);

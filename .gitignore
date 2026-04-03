@@ -8,3 +8,4 @@ backend/.m2
 frontend/node_modules
 frontend/build
 .idea
+frontend_local_backup_*
