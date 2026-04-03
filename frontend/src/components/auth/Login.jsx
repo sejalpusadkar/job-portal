@@ -4,34 +4,14 @@ import { useAuth } from '../../context/AuthContext';
 import { login } from '../../services/authService';
 import { TextField, Button, Alert } from '@mui/material';
 import loginBg from '../../assets/login-bg.webp';
-import API from '../../services/api';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [info, setInfo] = useState('');
-    const [backendStatus, setBackendStatus] = useState('');
     const navigate = useNavigate();
     const { login: authLogin } = useAuth();
-
-    React.useEffect(() => {
-        let mounted = true;
-        API.get('auth/ping')
-            .then(() => {
-                if (mounted) setBackendStatus('Backend: connected');
-            })
-            .catch((e) => {
-                const msg =
-                    e.response?.status
-                        ? `Backend: ${e.response.status} ${e.response.statusText || ''}`.trim()
-                        : 'Backend: not reachable';
-                if (mounted) setBackendStatus(msg);
-            });
-        return () => {
-            mounted = false;
-        };
-    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -81,11 +61,6 @@ const Login = () => {
                 animation: 'fadeIn 0.8s ease-in'
             }}>
                 <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Login</h2>
-                {backendStatus && (
-                    <Alert severity={backendStatus.includes('connected') ? 'success' : 'warning'}>
-                        {backendStatus}
-                    </Alert>
-                )}
                 {error && <Alert severity="error">{error}</Alert>}
                 {info && <Alert severity="success">{info}</Alert>}
                 <form onSubmit={handleSubmit}>

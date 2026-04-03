@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../../services/authService';
 import registerBg from '../../assets/register-bg.webp';
-import API from '../../services/api';
 import {
     TextField,
     Button,
@@ -26,30 +25,11 @@ const Register = () => {
         adminRegistrationCode: ''
     });
     const [error, setError] = useState('');
-    const [backendStatus, setBackendStatus] = useState('');
     const navigate = useNavigate();
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
-
-    React.useEffect(() => {
-        let mounted = true;
-        API.get('auth/ping')
-            .then(() => {
-                if (mounted) setBackendStatus('Backend: connected');
-            })
-            .catch((e) => {
-                const msg =
-                    e.response?.status
-                        ? `Backend: ${e.response.status} ${e.response.statusText || ''}`.trim()
-                        : 'Backend: not reachable';
-                if (mounted) setBackendStatus(msg);
-            });
-        return () => {
-            mounted = false;
-        };
-    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -106,11 +86,6 @@ const Register = () => {
                 <Typography variant="h4" align="center" gutterBottom>
                     Create Account
                 </Typography>
-                {backendStatus && (
-                    <Alert severity={backendStatus.includes('connected') ? 'success' : 'warning'}>
-                        {backendStatus}
-                    </Alert>
-                )}
                 {error && (
                     <Alert
                         severity="error"
