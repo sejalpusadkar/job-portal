@@ -2,16 +2,8 @@ import axios from 'axios';
 import { API_BASE_URL } from '../utils/url';
 
 // IMPORTANT: Keep a trailing slash so axios joins paths correctly:
-// baseURL '/api/' + 'auth/register' -> '/api/auth/register' (NOT '/apiauth/register')
-const normalizeApiBase = (origin) => {
-    const raw = (origin || '').trim();
-    if (!raw) return '/api/'; // local dev fallback
-    const withoutTrailing = raw.replace(/\/+$/, '');
-    if (withoutTrailing.endsWith('/api')) return `${withoutTrailing}/`;
-    return `${withoutTrailing}/api/`;
-};
-
-const API_ROOT = normalizeApiBase(API_BASE_URL);
+// baseURL `${API_BASE_URL}/api/` + 'auth/register' -> `${API_BASE_URL}/api/auth/register`
+const API_ROOT = API_BASE_URL ? `${API_BASE_URL.replace(/\/+$/, '')}/api/` : '/api/';
 
 const API = axios.create({
     baseURL: API_ROOT,
