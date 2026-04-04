@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
@@ -13,6 +14,12 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import PrivateRoute from './components/common/PrivateRoute';
 
 function App() {
+    // Wake up Railway backend to reduce cold-start delays.
+    // Do not block UI; ignore errors silently.
+    useEffect(() => {
+        fetch('https://job-portal-production-8b9c.up.railway.app/api/auth/ping').catch(() => {});
+    }, []);
+
     return (
         <AuthProvider>
             <BrowserRouter
