@@ -37,18 +37,8 @@ const Register = () => {
             await register(formData);
             navigate('/login');
         } catch (err) {
-            // Helpful debug: show what URL was actually used (proxy/baseURL issues).
-            // You can remove later once stable.
-            // eslint-disable-next-line no-console
-            console.error('REGISTER failed', {
-                status: err.response?.status,
-                url: err.config?.baseURL ? `${err.config.baseURL}${err.config.url}` : err.config?.url,
-                data: err.response?.data,
-            });
             if (!err.response) {
-                setError(
-                    `Registration failed: cannot reach backend API. Set REACT_APP_API_BASE_URL (production) or start backend locally. (API base: ${process.env.REACT_APP_API_BASE_URL || '/api/'})`
-                );
+                setError('Something went wrong. Please try again.');
                 return;
             }
             const status = err.response?.status;
@@ -235,15 +225,5 @@ const Register = () => {
         </div>
     );
 };
-
-// Add fade-in animation (you can also put this in a global CSS file)
-const style = document.createElement('style');
-style.innerHTML = `
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-`;
-document.head.appendChild(style);
 
 export default Register;

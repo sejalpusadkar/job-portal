@@ -25,19 +25,11 @@ const Login = () => {
             else if (role === 'RECRUITER') navigate('/recruiter-dashboard');
             else if (role === 'ADMIN') navigate('/admin-dashboard');
         } catch (err) {
-            // eslint-disable-next-line no-console
-            console.error('LOGIN failed', {
-                status: err.response?.status,
-                url: err.config?.baseURL ? `${err.config.baseURL}${err.config.url}` : err.config?.url,
-                data: err.response?.data,
-            });
             if (!err.response) {
-                setError(
-                    `Login failed: cannot reach backend API. Set REACT_APP_API_BASE_URL (production) or start backend locally. (API base: ${process.env.REACT_APP_API_BASE_URL || '/api/'})`
-                );
+                setError('Something went wrong. Please try again.');
                 return;
             }
-            setError(err.response?.data?.message || err.response?.data || 'Invalid email or password');
+            setError(err.response?.data?.message || 'Invalid email or password');
         }
     };
 
@@ -112,15 +104,5 @@ const Login = () => {
         </div>
     );
 };
-
-// Optional fade-in animation (add to your global CSS or inside a <style> tag)
-const style = document.createElement('style');
-style.innerHTML = `
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-`;
-document.head.appendChild(style);
 
 export default Login;
