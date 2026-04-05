@@ -1156,7 +1156,7 @@ const RecruiterDashboardAts = () => {
                                                 </div>
                                             ) : (
                                                 filteredApps.slice(0, 20).map((a) => (
-                                                    <div className="ats-activity" key={`a-${a.applicationId}`}>
+                                                    <div className="ats-activity application-card" key={`a-${a.applicationId}`}>
                                                         <Avatar
                                                             src={resolveUploadUrl(a.profilePhotoDataUrl) || undefined}
                                                             sx={{ width: 36, height: 36 }}
@@ -1167,7 +1167,7 @@ const RecruiterDashboardAts = () => {
                                                             </div>
                                                             <div className="ats-activity__sub">Status: {a.status}</div>
                                                         </div>
-                                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                                        <div className="application-actions">
                                                             <button
                                                                 className="ats-mini"
                                                                 disabled={!a.resumeUrl}

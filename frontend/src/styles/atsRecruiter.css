@@ -468,6 +468,27 @@
   background: rgba(255,255,255,0.84);
 }
 
+.application-card.ats-activity {
+  /* Application rows have multiple action buttons; use flex so actions wrap instead of overflowing/overlapping. */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.application-card.ats-activity > :nth-child(2) {
+  flex: 1 1 280px;
+  min-width: 220px;
+}
+
+.application-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .ats-activity:hover {
   border-color: rgba(11, 95, 255, 0.22);
 }
