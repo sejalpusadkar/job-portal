@@ -12,12 +12,15 @@ import RecruiterNotifications from './components/recruiter/RecruiterNotification
 import RecruiterCandidateProfilePage from './components/recruiter/RecruiterCandidateProfilePage';
 import AdminDashboard from './components/admin/AdminDashboard';
 import PrivateRoute from './components/common/PrivateRoute';
+import { API_BASE_URL } from './utils/url';
 
 function App() {
     // Wake up Railway backend to reduce cold-start delays.
     // Do not block UI; ignore errors silently.
     useEffect(() => {
-        fetch('https://job-portal-production-8b9c.up.railway.app/api/auth/ping').catch(() => {});
+        const origin = (API_BASE_URL || '').trim().replace(/\/+$/, '');
+        if (!origin) return;
+        fetch(`${origin}/api/auth/ping`).catch(() => {});
     }, []);
 
     return (

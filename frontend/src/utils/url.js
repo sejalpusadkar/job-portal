@@ -1,7 +1,11 @@
 // Single source of truth:
-// Set this in Vercel as REACT_APP_API_BASE_URL=https://<your-railway-domain>
+// Set this in Vercel as:
+// REACT_APP_API_URL=https://<your-railway-domain>
+// (We also support the legacy name REACT_APP_API_BASE_URL.)
 // Keep it as the origin only (no trailing /api).
-export const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || '').trim().replace(/\/+$/, '');
+export const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || '')
+    .trim()
+    .replace(/\/+$/, '');
 
 export const resolveBackendOrigin = () => {
     if (API_BASE_URL) return API_BASE_URL;
