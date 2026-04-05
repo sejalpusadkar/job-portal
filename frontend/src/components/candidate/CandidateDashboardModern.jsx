@@ -976,49 +976,55 @@ const CandidateDashboardModern = () => {
                                     </div>
                                 ) : null}
 
-                                <div className="cp-jobs" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-                                    {browseJobs.slice(0, 24).map((j) => {
-                                        const company = (j.companyName || '').trim() || 'Confidential IT Company';
-                                        const canApply = !appliedJobIds.has(String(j.id));
-                                        return (
-                                            <div className="cp-job" key={`b-${j.id}`}>
-                                                <div className="cp-job__top">
-                                                    <div style={{ minWidth: 0 }}>
-                                                        <p className="cp-job__title">{j.title || 'Role'}</p>
-                                                        {j.recruiterUserId ? (
-                                                            <button
-                                                                type="button"
-                                                                className="cp-job__company cp-job__companyLink"
-                                                                onClick={() => goRecruiter(j.recruiterUserId)}
-                                                            >
-                                                                {company}
-                                                            </button>
-                                                        ) : (
-                                                            <div className="cp-job__company">{company}</div>
-                                                        )}
+                                {browseJobs.length === 0 ? (
+                                    <div className="cp-muted">
+                                        No jobs available right now. Try again later, or update your Profile skills to improve matching.
+                                    </div>
+                                ) : (
+                                    <div className="cp-jobs" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                                        {browseJobs.slice(0, 24).map((j) => {
+                                            const company = (j.companyName || '').trim() || 'Confidential IT Company';
+                                            const canApply = !appliedJobIds.has(String(j.id));
+                                            return (
+                                                <div className="cp-job" key={`b-${j.id}`}>
+                                                    <div className="cp-job__top">
+                                                        <div style={{ minWidth: 0 }}>
+                                                            <p className="cp-job__title">{j.title || 'Role'}</p>
+                                                            {j.recruiterUserId ? (
+                                                                <button
+                                                                    type="button"
+                                                                    className="cp-job__company cp-job__companyLink"
+                                                                    onClick={() => goRecruiter(j.recruiterUserId)}
+                                                                >
+                                                                    {company}
+                                                                </button>
+                                                            ) : (
+                                                                <div className="cp-job__company">{company}</div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="cp-tags">
+                                                        <span className="cp-tag">{formatCtc(j) || 'Salary not disclosed'}</span>
+                                                        <span className="cp-tag">Full-time</span>
+                                                        <span className="cp-tag">Remote</span>
+                                                    </div>
+                                                    <div className="cp-job__cta">
+                                                        <div className="cp-muted" style={{ fontSize: 12 }}>
+                                                            {company}
+                                                        </div>
+                                                        <button
+                                                            className="cp-mini cp-mini--primary"
+                                                            disabled={!canApply}
+                                                            onClick={() => onApply(j.id)}
+                                                        >
+                                                            {canApply ? 'View Role' : 'Applied'}
+                                                        </button>
                                                     </div>
                                                 </div>
-                                                <div className="cp-tags">
-                                                    <span className="cp-tag">{formatCtc(j) || 'Salary not disclosed'}</span>
-                                                    <span className="cp-tag">Full-time</span>
-                                                    <span className="cp-tag">Remote</span>
-                                                </div>
-                                                <div className="cp-job__cta">
-                                                    <div className="cp-muted" style={{ fontSize: 12 }}>
-                                                        {company}
-                                                    </div>
-                                                    <button
-                                                        className="cp-mini cp-mini--primary"
-                                                        disabled={!canApply}
-                                                        onClick={() => onApply(j.id)}
-                                                    >
-                                                        {canApply ? 'View Role' : 'Applied'}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         ) : null}
 
