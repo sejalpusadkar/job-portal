@@ -1,0 +1,16 @@
+.git
+.idea
+.vscode
+
+# Frontend artifacts (not needed for backend container)
+frontend/node_modules
+frontend/build
+frontend/.vercel
+frontend_local_backup_*
+
+# Backend build output (rebuilt in container)
+backend/target
+
+# OS files
+.DS_Store
+
