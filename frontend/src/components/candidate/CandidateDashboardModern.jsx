@@ -46,7 +46,7 @@ import {
     deleteCertificate,
     getApplicationDetail,
 } from '../../services/candidateService';
-import { getAllJobs } from '../../services/jobService';
+import { getAllJobs, getJobById } from '../../services/jobService';
 import { listNotifications, markAllNotificationsRead, markNotificationRead } from '../../services/notificationService';
 import { listCandidateInterviews } from '../../services/interviewService';
 import { getCandidateStats } from '../../services/statsService';
@@ -195,7 +195,18 @@ const CandidateDashboardModern = () => {
     const nav = useNavigate();
 
     const allowedPages = useMemo(
-        () => ['dashboard', 'browse', 'applications', 'application', 'certificates', 'profile', 'notifications', 'interviews', 'offers'],
+        () => [
+            'dashboard',
+            'browse',
+            'job',
+            'applications',
+            'application',
+            'certificates',
+            'profile',
+            'notifications',
+            'interviews',
+            'offers',
+        ],
         [],
     );
 
@@ -224,6 +235,17 @@ const CandidateDashboardModern = () => {
         });
         setSearchParams(sp);
     };
+
+    // If user refreshes on job details page, fetch the job details again.
+    useEffect(() => {
+        if (page !== 'job') return;
+        const id = (searchParams.get('jobId') || '').trim();
+        if (!id) return;
+        if (jobDetailId === id && jobDetail) return;
+        // eslint-disable-next-line no-use-before-define
+        loadJobDetail(id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [page, searchParams]);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -267,6 +289,12 @@ const CandidateDashboardModern = () => {
     const [appDetail, setAppDetail] = useState(null);
     const [appDetailLoading, setAppDetailLoading] = useState(false);
     const [appDetailError, setAppDetailError] = useState('');
+
+    const [jobDetailId, setJobDetailId] = useState(null);
+    const [jobDetail, setJobDetail] = useState(null);
+    const [jobDetailLoading, setJobDetailLoading] = useState(false);
+    const [jobDetailError, setJobDetailError] = useState('');
+    const [jobDetailBackPage, setJobDetailBackPage] = useState('browse');
 
     const loadAll = async () => {
         setLoading(true);
@@ -520,6 +548,48 @@ const CandidateDashboardModern = () => {
         setAppDetailId(null);
         setAppDetail(null);
         setAppDetailError('');
+    };
+
+    const loadJobDetail = async (jobId) => {
+        const id = String(jobId || '').trim();
+        if (!id) return;
+        setJobDetailId(id);
+        setJobDetail(null);
+        setJobDetailError('');
+        setJobDetailLoading(true);
+
+        // Try to use cached lists first (fast UI).
+        const cached =
+            (allJobs || []).find((j) => String(j.id) === id) ||
+            (matchedJobs || []).find((j) => String(j.id) === id);
+        if (cached) {
+            setJobDetail(cached);
+            setJobDetailLoading(false);
+            return;
+        }
+
+        try {
+            const res = await getJobById(id);
+            setJobDetail(res.data || null);
+        } catch (e) {
+            setJobDetailError(e.response?.data?.message || e.response?.data || 'Failed to load job details');
+        } finally {
+            setJobDetailLoading(false);
+        }
+    };
+
+    const openJobDetail = (jobId, backPage = page || 'browse') => {
+        const id = String(jobId || '').trim();
+        if (!id) return;
+        setJobDetailBackPage(backPage);
+        go('job', { jobId: id });
+    };
+
+    const closeJobDetail = () => {
+        setJobDetailId(null);
+        setJobDetail(null);
+        setJobDetailError('');
+        go(jobDetailBackPage || 'browse');
     };
 
     const goRecruiter = (recruiterUserId) => {
@@ -968,7 +1038,10 @@ const CandidateDashboardModern = () => {
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', gap: 10 }}>
-                                                <button className="cp-btn cp-btn--primary" onClick={() => featuredJob?.id && onApply(featuredJob.id)}>
+                                                <button
+                                                    className="cp-btn cp-btn--primary"
+                                                    onClick={() => featuredJob?.id && openJobDetail(featuredJob.id, 'browse')}
+                                                >
                                                     View Role
                                                 </button>
                                             </div>
@@ -984,7 +1057,6 @@ const CandidateDashboardModern = () => {
                                     <div className="cp-jobs" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
                                         {browseJobs.slice(0, 24).map((j) => {
                                             const company = (j.companyName || '').trim() || 'Confidential IT Company';
-                                            const canApply = !appliedJobIds.has(String(j.id));
                                             return (
                                                 <div className="cp-job" key={`b-${j.id}`}>
                                                     <div className="cp-job__top">
@@ -1014,15 +1086,88 @@ const CandidateDashboardModern = () => {
                                                         </div>
                                                         <button
                                                             className="cp-mini cp-mini--primary"
-                                                            disabled={!canApply}
-                                                            onClick={() => onApply(j.id)}
+                                                            onClick={() => openJobDetail(j.id, 'browse')}
                                                         >
-                                                            {canApply ? 'View Role' : 'Applied'}
+                                                            View Role
                                                         </button>
                                                     </div>
                                                 </div>
                                             );
                                         })}
+                                    </div>
+                                )}
+                            </div>
+                        ) : null}
+
+                        {page === 'job' ? (
+                            <div className="cp-card cp-pad">
+                                <div className="cp-row" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                                    <div style={{ minWidth: 0 }}>
+                                        <h1 className="cp-h1" style={{ fontSize: 28, marginBottom: 6 }}>
+                                            Job Details
+                                        </h1>
+                                        <div className="cp-sub">View job requirements and apply when ready.</div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                        <button className="cp-btn" onClick={closeJobDetail}>
+                                            Back
+                                        </button>
+                                        <button
+                                            className="cp-btn cp-btn--primary"
+                                            disabled={!jobDetail?.id || appliedJobIds.has(String(jobDetail?.id))}
+                                            onClick={() => jobDetail?.id && onApply(jobDetail.id)}
+                                        >
+                                            {jobDetail?.id && appliedJobIds.has(String(jobDetail?.id)) ? 'Applied' : 'Apply'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <Divider sx={{ my: 2 }} />
+
+                                {jobDetailLoading ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'rgba(15,23,42,0.70)' }}>
+                                        <CircularProgress size={18} /> Loading job details...
+                                    </div>
+                                ) : jobDetailError ? (
+                                    <Alert severity="error">{String(jobDetailError)}</Alert>
+                                ) : !jobDetail ? (
+                                    <div className="cp-muted">Job not found.</div>
+                                ) : (
+                                    <div style={{ display: 'grid', gap: 14 }}>
+                                        <div>
+                                            <div style={{ fontWeight: 950, fontSize: 18 }}>{jobDetail.title || 'Role'}</div>
+                                            <div className="cp-muted" style={{ marginTop: 4 }}>
+                                                {jobDetail.recruiterUserId ? (
+                                                    <button
+                                                        type="button"
+                                                        className="cp-inlineLink"
+                                                        onClick={() => goRecruiter(jobDetail.recruiterUserId)}
+                                                    >
+                                                        {(jobDetail.companyName || '').trim() || 'Confidential IT Company'}
+                                                    </button>
+                                                ) : (
+                                                    (jobDetail.companyName || '').trim() || 'Confidential IT Company'
+                                                )}{' '}
+                                                · {formatCtc(jobDetail) || 'Salary not disclosed'} · Min Exp:{' '}
+                                                {jobDetail.minExperienceYears ?? 0}y
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                            {(jobDetail.requiredSkills || []).slice(0, 12).map((s) => (
+                                                <Chip key={`js-${s}`} label={String(s)} size="small" />
+                                            ))}
+                                            {(jobDetail.keywords || []).slice(0, 12).map((k) => (
+                                                <Chip key={`jk-${k}`} label={String(k)} size="small" variant="outlined" />
+                                            ))}
+                                        </div>
+
+                                        <div className="cp-card cp-pad" style={{ background: 'rgba(255,255,255,0.72)' }}>
+                                            <div className="cp-section-title">Job Description</div>
+                                            <div style={{ whiteSpace: 'pre-wrap', color: 'rgba(15,23,42,0.82)', fontSize: 14 }}>
+                                                {jobDetail.description || 'No description provided.'}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
