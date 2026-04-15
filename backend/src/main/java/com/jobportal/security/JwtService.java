@@ -4,36 +4,34 @@ import com.jobportal.user.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import java.security.Key;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class JwtService {
-    private final Key signingKey;
-    private final long expirationMs;
+    @Value("${jwt.secret}")
+    private String secret;
 
-    public JwtService(
-            @Value("${jwt.secret}") String jwtSecret,
-            @Value("${jwt.expiration}") long expirationMs) {
-        // Support either plain text (>= 32 chars for HS256) or base64 secrets.
-        byte[] keyBytes;
-        if (jwtSecret.matches("^[A-Za-z0-9+/=]+$") && jwtSecret.length() % 4 == 0) {
-            try {
-                keyBytes = Decoders.BASE64.decode(jwtSecret);
-            } catch (IllegalArgumentException ignored) {
-                keyBytes = jwtSecret.getBytes();
-            }
-        } else {
-            keyBytes = jwtSecret.getBytes();
+    @Value("${jwt.expiration}")
+    private long expirationMs;
+
+    private Key signingKey;
+
+    @PostConstruct
+    public void init() {
+        if (secret == null || secret.trim().length() < 32) {
+            throw new IllegalArgumentException("JWT secret must be at least 32 characters long");
         }
-        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
-        this.expirationMs = expirationMs;
+        // Use raw string bytes (NOT Base64) unless you explicitly store Base64 in env.
+        // This avoids Decoders.BASE64 errors when secrets contain non-base64 chars.
+        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     public String generateToken(Long userId, String email, Role role, boolean recruiterApproved) {
@@ -67,4 +65,3 @@ public class JwtService {
                 && expiration.after(new Date());
     }
 }
-
