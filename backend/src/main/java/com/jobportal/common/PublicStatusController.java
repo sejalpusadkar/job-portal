@@ -26,10 +26,7 @@ public class PublicStatusController {
     }
 
     @GetMapping("/health")
-    public Map<String, Object> health() {
-        Map<String, Object> res = new LinkedHashMap<>();
-        res.put("status", "ok");
-        return res;
+    public String health() {
+        return "OK";
     }
 }
-

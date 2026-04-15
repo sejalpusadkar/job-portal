@@ -5,6 +5,7 @@ frontend/.env
 backend/target
 backend/uploads
 backend/.m2
+.m2
 frontend/node_modules
 frontend/build
 .idea

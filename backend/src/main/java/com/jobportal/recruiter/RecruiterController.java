@@ -41,7 +41,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/recruiter")
 @RequiredArgsConstructor
-@PreAuthorize("authentication.principal.recruiterApproved == true")
+@PreAuthorize("isAuthenticated() and authentication.principal.recruiterApproved == true")
 public class RecruiterController {
     private final RecruiterService recruiterService;
     private final RecruiterProfileService recruiterProfileService;

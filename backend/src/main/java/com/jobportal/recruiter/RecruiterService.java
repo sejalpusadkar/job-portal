@@ -22,6 +22,8 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +32,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @RequiredArgsConstructor
 public class RecruiterService {
+    private static final Logger log = LoggerFactory.getLogger(RecruiterService.class);
+
     private final UserRepository userRepository;
     private final JobPostingRepository jobPostingRepository;
     private final CandidateProfileRepository candidateProfileRepository;
@@ -249,30 +253,62 @@ public class RecruiterService {
         app.setUpdatedAt(Instant.now());
         jobApplicationRepository.save(app);
 
-        String jobTitle = app.getJob().getTitle();
-        String msg =
-                switch (status) {
-                    case APPLIED -> "Your application was received for " + jobTitle;
-                    case SHORTLISTED -> "You were shortlisted for " + jobTitle;
-                    case TECHNICAL -> "You moved to technical round for " + jobTitle;
-                    case FINAL_INTERVIEW -> "You moved to final interview for " + jobTitle;
-                    case OFFER -> "You received an offer update for " + jobTitle;
-                    case REJECTED -> "Your application was rejected for " + jobTitle;
-                };
-        notificationService.notifyUser(
-                app.getCandidateUser().getId(),
-                recruiterUserId,
-                NotificationType.APPLICATION_UPDATE,
-                "Application Update",
-                msg,
-                "/candidate-dashboard?page=applications");
+        // Side effects (notifications/activity) must never cause the core action to fail.
+        // This prevents 500s from legacy/corrupted rows while still updating the status correctly.
+        String jobTitle = "";
+        Long jobId = null;
+        Long candidateUserId = null;
+        try {
+            jobTitle = (app.getJob() == null || app.getJob().getTitle() == null) ? "" : app.getJob().getTitle();
+            jobId = (app.getJob() == null) ? null : app.getJob().getId();
+            candidateUserId = (app.getCandidateUser() == null) ? null : app.getCandidateUser().getId();
+        } catch (Exception e) {
+            log.warn(
+                    "Failed to resolve job/candidate for applicationId={} recruiterUserId={}. Status update already saved.",
+                    applicationId,
+                    recruiterUserId,
+                    e);
+        }
 
-        activityService.log(
-                recruiterUserId,
-                ActivityType.APPLICATION_STATUS_CHANGED,
-                "Candidate moved to " + status + " for " + jobTitle,
-                app.getJob().getId(),
-                app.getCandidateUser().getId());
+        if (candidateUserId != null) {
+            try {
+                String safeTitle = jobTitle.isBlank() ? "the job" : jobTitle;
+                String msg =
+                        switch (status) {
+                            case APPLIED -> "Your application was received for " + safeTitle;
+                            case SHORTLISTED -> "You were shortlisted for " + safeTitle;
+                            case TECHNICAL -> "You moved to technical round for " + safeTitle;
+                            case FINAL_INTERVIEW -> "You moved to final interview for " + safeTitle;
+                            case OFFER -> "You received an offer update for " + safeTitle;
+                            case REJECTED -> "Your application was rejected for " + safeTitle;
+                        };
+                notificationService.notifyUser(
+                        candidateUserId,
+                        recruiterUserId,
+                        NotificationType.APPLICATION_UPDATE,
+                        "Application Update",
+                        msg,
+                        "/candidate-dashboard?page=applications");
+            } catch (Exception e) {
+                log.warn(
+                        "Notification failed for applicationId={} recruiterUserId={} candidateUserId={}.",
+                        applicationId,
+                        recruiterUserId,
+                        candidateUserId,
+                        e);
+            }
+        }
+
+        try {
+            activityService.log(
+                    recruiterUserId,
+                    ActivityType.APPLICATION_STATUS_CHANGED,
+                    "Candidate moved to " + status + (jobTitle.isBlank() ? "" : " for " + jobTitle),
+                    jobId,
+                    candidateUserId);
+        } catch (Exception e) {
+            log.warn("Activity log failed for applicationId={} recruiterUserId={}.", applicationId, recruiterUserId, e);
+        }
     }
 
     @Transactional

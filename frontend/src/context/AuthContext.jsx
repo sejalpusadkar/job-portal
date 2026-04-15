@@ -51,11 +51,15 @@ export const AuthProvider = ({ children }) => {
                     localStorage.setItem('user', JSON.stringify(nextUser));
                     setUser(nextUser);
                 }
-            } catch {
-                // Token missing/expired/invalid. Clear and force login.
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                if (mounted) setUser(null);
+            } catch (err) {
+                // Only clear session when the backend explicitly says the token is invalid.
+                // If backend is temporarily down/restarting, keep the session to avoid random logouts.
+                const status = err?.response?.status;
+                if (status === 401 || status === 403) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    if (mounted) setUser(null);
+                }
             } finally {
                 if (mounted) setLoading(false);
             }
