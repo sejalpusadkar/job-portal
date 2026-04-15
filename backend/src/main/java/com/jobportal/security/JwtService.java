@@ -10,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -22,16 +21,17 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long expirationMs;
 
-    private Key signingKey;
-
-    @PostConstruct
-    public void init() {
-        if (secret == null || secret.trim().length() < 32) {
-            throw new IllegalArgumentException("JWT secret must be at least 32 characters long");
+    // NOTE:
+    // - No constructor logic
+    // - No @PostConstruct
+    // - No eager key generation
+    //
+    // This ensures the bean can never crash the application at startup.
+    private Key getSigningKey() {
+        if (secret == null || secret.length() < 32) {
+            throw new RuntimeException("JWT secret is missing or too short");
         }
-        // Use raw string bytes (NOT Base64) unless you explicitly store Base64 in env.
-        // This avoids Decoders.BASE64 errors when secrets contain non-base64 chars.
-        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     public String generateToken(Long userId, String email, Role role, boolean recruiterApproved) {
@@ -47,12 +47,12 @@ public class JwtService {
                                 "uid", userId,
                                 "role", role.name(),
                                 "recruiterApproved", recruiterApproved))
-                .signWith(signingKey, SignatureAlgorithm.HS256)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
     public Claims parseClaims(String token) {
-        return Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(token).getBody();
+        return Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token).getBody();
     }
 
     public boolean isTokenValid(String token, String expectedEmail) {
