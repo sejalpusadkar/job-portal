@@ -11,5 +11,5 @@ COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
 
-ENTRYPOINT ["java","-jar","app.jar"]
-
+# Force IPv4 to avoid some hosting environments preferring IPv6 and failing with "Network is unreachable"
+ENTRYPOINT ["java","-Djava.net.preferIPv4Stack=true","-jar","app.jar"]
