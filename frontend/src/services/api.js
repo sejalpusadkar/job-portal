@@ -3,7 +3,17 @@ import { API_BASE_URL } from '../utils/url';
 
 // IMPORTANT: Keep a trailing slash so axios joins paths correctly:
 // baseURL `${API_BASE_URL}/api/` + 'auth/register' -> `${API_BASE_URL}/api/auth/register`
-const API_ROOT = API_BASE_URL ? `${API_BASE_URL.replace(/\/+$/, '')}/api/` : '/api/';
+const isLocalhost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+// In production on Vercel, we proxy `/api/*` to the backend via `frontend/vercel.json`.
+// This avoids CORS issues and avoids stale build-time env var problems.
+const API_ROOT = isLocalhost
+    ? API_BASE_URL
+        ? `${API_BASE_URL.replace(/\/+$/, '')}/api/`
+        : 'http://localhost:8080/api/'
+    : '/api/';
 
 const API = axios.create({
     baseURL: API_ROOT,
