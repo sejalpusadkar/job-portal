@@ -6,6 +6,7 @@ import reportWebVitals from './reportWebVitals';
 
 // Pre-warm Railway backend before React renders to reduce cold-start delays.
 // We do NOT block indefinitely: we attempt the ping, but render regardless after a short timeout.
+// Deploy note: any change to Vercel env vars requires a new build; this file bump triggers a redeploy if needed.
 const BACKEND_ORIGIN = (process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || '')
   .trim()
   .replace(/\/+$/, '');
