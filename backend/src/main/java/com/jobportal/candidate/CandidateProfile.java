@@ -53,7 +53,8 @@ public class CandidateProfile {
     private String professionalSummary = "";
 
     @Lob
-    @Column(name = "profile_photo", columnDefinition = "LONGTEXT", nullable = false)
+    // Do not use MySQL-only columnDefinition types (e.g., LONGTEXT). Let the dialect choose.
+    @Column(name = "profile_photo", nullable = false)
     private String profilePhotoDataUrl = "";
 
     @Column(name = "resume_url", nullable = false, length = 512)
